@@ -1,0 +1,8 @@
+#!/bin/sh
+
+module load cmake
+module load fftw 
+cmake . -Bbld
+cmake --build bld --parallel 16
+cp bld/lesgo* .
+
