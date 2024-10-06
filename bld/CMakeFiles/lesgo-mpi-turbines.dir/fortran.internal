@@ -1,0 +1,37 @@
+# The fortran modules provided by this target.
+provides
+ cfl_util.mod
+ clock_m.mod
+ coriolis.mod
+ derivatives.mod
+ emul_complex.mod
+ eqmfit_wm.mod
+ fft.mod
+ forcing.mod
+ fringe.mod
+ functions.mod
+ grid_m.mod
+ inflow.mod
+ input_util.mod
+ io.mod
+ iwmles.mod
+ messages.mod
+ mosd_wm.mod
+ mpi_defs.mod
+ mpi_transpose_mod.mod
+ param.mod
+ phase_average.mod
+ pid_m.mod
+ sgs_param.mod
+ sgs_stag_util.mod
+ shifted_inflow.mod
+ sim_param.mod
+ sponge.mod
+ stat_defs.mod
+ string_util.mod
+ test_filtermodule.mod
+ time_average.mod
+ turbine_indicator.mod
+ turbines.mod
+ types.mod
+ wave_spectrum.mod
