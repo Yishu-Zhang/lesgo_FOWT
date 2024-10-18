@@ -89,11 +89,11 @@ logical, public :: adm_correction
 integer, public :: tbase
 
 ! frequency of forced tilting
-real(rprec), public :: theta2_freq
+! real(rprec), public :: theta2_freq
 ! amplitude of forced tilting
-real(rprec), public :: theta2_amp
+! real(rprec), public :: theta2_amp
 ! second amplitude of forced tilting 
-real(rprec), public :: phi2
+! real(rprec), public :: phi2
 ! selection of type of dynamic angles
 integer, public :: angle_type
 
@@ -590,6 +590,7 @@ select case(angle_type)
              wind_farm%turbine(s)%theta1 = 0.0_rprec
              wind_farm%turbine(s)%theta2 = (theta2_amp*sin(theta2_freq*2*pi*      & 
                                            total_time) + phi2)
+            ! write(*,*) 'check ', wind_farm%turbine(s)%theta2, theta2_freq 
              wind_farm%turbine(s)%omegax = 0.0_rprec
              wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time))*pi/180
@@ -711,17 +712,18 @@ do s=1,nloc
 
     !write values to file
     if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
-        if (angle_type==0) then
-                eta_val = (bilinear_interp(x(1:nx),y(1:ny),eta(:,:),                    &
-                                           wind_farm%turbine(s)%xloc_og,    &
-                                           wind_farm%turbine(s)%yloc_og))
-        else
-                eta_val = 0.0 
-        end if
+!        if (angle_type==0) then
+!                eta_val = (bilinear_interp(x(1:nx),y(1:ny),eta(:,:),                    &
+!                                           wind_farm%turbine(s)%xloc_og,    &
+!                                           wind_farm%turbine(s)%yloc_og))
+!        else
+!                eta_val = 0.0 
+!        end if
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
             wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
-            p_Ct_prime, jt_total, eta_val
+            p_Ct_prime, jt_total                   
+!    eta_val
     end if
 
 
