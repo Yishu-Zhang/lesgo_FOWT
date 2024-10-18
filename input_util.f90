@@ -681,6 +681,8 @@ do
                 read (buff(equal_pos+1:), *) pavg_tend
             case ('PAVG_NBINS')
                 read (buff(equal_pos+1:), *) pavg_nbins
+            case ('FREQ_TYPE')
+                read (buff(equal_pos+1:), *) freq_type
             case ('WAVEPLANE_CALC')
                 read (buff(equal_pos+1:), *) waveplane_calc
             case ('WAVEPLANE_NSTART')
@@ -689,7 +691,7 @@ do
                 read (buff(equal_pos+1:), *) waveplane_nend
             case ('WAVEPLANE_NSKIP')
                 read (buff(equal_pos+1:), *) waveplane_nskip
-           case ('MOSDPLANE_CALC')
+            case ('MOSDPLANE_CALC')
                 read (buff(equal_pos+1:), *) mosdplane_calc
             case ('MOSDPLANE_NSTART')
                 read (buff(equal_pos+1:), *) mosdplane_nstart
@@ -835,12 +837,18 @@ do
                 read (buff(equal_pos+1:), *) theta2_all
             case ('ANGLE_TYPE')
                 Read (buff(equal_pos+1:), *) angle_type
+            case ('FREQ_TYPE')
+                Read (buff(equal_pos+1:), *) freq_type 
             case ('THETA2_FREQ')
                 Read (buff(equal_pos+1:), *) theta2_freq
-            case ('THETA2_amp')
+            case ('THETA2_AMP')
                 Read (buff(equal_pos+1:), *) theta2_amp
             case ('PHI2')
                 Read (buff(equal_pos+1:), *) phi2
+            case ('U1_FREQ')
+                Read (buff(equal_pos+1:), *) u1_freq
+            case ('U1_AMP')
+                Read (buff(equal_pos+1:), *) u1_amp
             case ('CT_PRIME')
                 read (buff(equal_pos+1:), *) Ct_prime
             case ('READ_PARAM')

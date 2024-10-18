@@ -128,6 +128,8 @@ write(2,i_fmt) 'stop_random_force : ', stop_random_force
 write(2,f_fmt) 'rms_random_force : ', rms_random_force
 write(2,f_fmt) 'theta2_amp : ', theta2_amp
 write(2,f_fmt) 'theta2_freq : ', theta2_freq
+write(2,f_fmt) 'u1_amp : ', u1_amp
+write(2,f_fmt) 'u1_freq : ', u1_freq
 write(2,c_fmt) ''
 write(2,c_fmt) '---------------------------------------------------'
 write(2,c_fmt) 'DATA OUTPUT PARAMETERS'

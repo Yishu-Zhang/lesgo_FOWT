@@ -87,16 +87,7 @@ real(rprec), public :: filter_cutoff
 logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
-
-! frequency of forced tilting
-! real(rprec), public :: theta2_freq
-! amplitude of forced tilting
-! real(rprec), public :: theta2_amp
-! second amplitude of forced tilting 
-! real(rprec), public :: phi2
-! selection of type of dynamic angles
 integer, public :: angle_type
-
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
 real(rprec) :: sx           ! spacing in the x-direction, multiple of diameter
@@ -515,6 +506,7 @@ real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
 real(rprec), pointer :: p_Ct_prime => null()
 integer, pointer :: p_icp => null(), p_jcp => null(), p_kcp => null()
 real(rprec), pointer :: p_omegax => null(), p_omegay => null(), p_omegaz => null()
+! real(rprec), pointer :: p_u1 => null()
 
 integer :: fid
 
@@ -522,7 +514,8 @@ real(rprec) :: ind2
 real(rprec), dimension(nloc) :: disk_avg_vel
 real(rprec), dimension(nloc) :: u_vel_center, v_vel_center, w_vel_center
 real(rprec), allocatable, dimension(:,:,:) ::  u_vel_disk, v_vel_disk, w_vel_disk
-real(rprec), allocatable, dimension(:,:,:) ::  u_rel, v_rel, w_rel
+!real(rprec), allocatable, dimension(:,:,:) ::  u1, u2, u3
+real(rprec), dimension(nloc) :: u1_center, u2_center, u3_center
 real(rprec), allocatable, dimension(:,:,:) :: w_uv
 real(rprec), pointer, dimension(:) :: y, z,x
 real(rprec), dimension(nloc) :: buffer_array
@@ -536,6 +529,7 @@ z => grid % z
 
 allocate(w_uv(ld,ny,lbz:nz))
 allocate(u_vel_disk(ld,ny,lbz:nz), v_vel_disk(ld,ny,lbz:nz), w_vel_disk(ld,ny,lbz:nz))
+
 
 #ifdef PPMPI
 !syncing intermediate w-velocities
@@ -587,10 +581,9 @@ select case(angle_type)
         
         case (1)       ! Forced angle. Angle coming from equation
         do s = 1,nloc
-             wind_farm%turbine(s)%theta1 = 0.0_rprec
+             wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
              wind_farm%turbine(s)%theta2 = (theta2_amp*sin(theta2_freq*2*pi*      & 
                                            total_time) + phi2)
-            ! write(*,*) 'check ', wind_farm%turbine(s)%theta2, theta2_freq 
              wind_farm%turbine(s)%omegax = 0.0_rprec
              wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time))*pi/180
@@ -626,11 +619,23 @@ select case(angle_type)
 end select
 
 
+! Here we assign the surge velocity of each turbine from input u1_freq and u1_amp  
+do s = 1,nloc
+    if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+  !     PRINT *, 'Allocating u1 for turbine ', s
+        allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+    end if        
+  !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+  !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+    
+    wind_farm%turbine(s)%u1(:,:,:) = u1_amp*sin(u1_freq*2*pi*total_time)
+end do
 !Each processor calculates the weighted disk-averaged velocity
 disk_avg_vel = 0._rprec
 u_vel_center = 0._rprec
 v_vel_center = 0._rprec
 w_vel_center = 0._rprec
+u1_center = 0._rprec
 u_vel_disk = 0._rprec
 v_vel_disk = 0._rprec
 w_vel_disk = 0._rprec
@@ -641,12 +646,18 @@ do s=1,nloc
     p_omegay => wind_farm%turbine(s)%omegay
     p_omegaz => wind_farm%turbine(s)%omegaz
 
+    !set pointers for velocity
+   ! p_u1 => wind_farm%turbine(s)%u1
+   ! p_u2 => wind_farm%turbine(s)%u2
+   ! p_u3 => wind_farm%turbine(s)%u3
+   
     do l=1,wind_farm%turbine(s)%num_nodes
         i2 = wind_farm%turbine(s)%nodes(l,1)
         j2 = wind_farm%turbine(s)%nodes(l,2)
         k2 = wind_farm%turbine(s)%nodes(l,3)
 
-        u_vel_disk(i2,j2,k2) = (p_omegay*rz_l(i2,j2,k2) - p_omegaz*ry_l(i2,j2,k2))
+        u_vel_disk(i2,j2,k2) =  wind_farm%turbine(s)%u1(i2,j2,k2)                &
+            + (p_omegay*rz_l(i2,j2,k2) - p_omegaz*ry_l(i2,j2,k2))
         v_vel_disk(i2,j2,k2) = -(p_omegax*rz_l(i2,j2,k2) - p_omegaz*rx_l(i2,j2,k2))
         w_vel_disk(i2,j2,k2) = (p_omegax*ry_l(i2,j2,k2) - p_omegay*rx_l(i2,j2,k2))
 
@@ -667,6 +678,7 @@ do s=1,nloc
         u_vel_center(s) = u(p_icp, p_jcp, p_kcp)
         v_vel_center(s) = v(p_icp, p_jcp, p_kcp)
         w_vel_center(s) = w_uv(p_icp, p_jcp, p_kcp)
+        u1_center(s) = wind_farm%turbine(s)%u1(p_icp, p_jcp, p_kcp)
     end if
 end do
 
@@ -680,6 +692,8 @@ call MPI_Allreduce(v_vel_center, buffer_array, nloc, MPI_rprec, MPI_SUM, comm, i
 v_vel_center = buffer_array
 call MPI_Allreduce(w_vel_center, buffer_array, nloc, MPI_rprec, MPI_SUM, comm, ierr)
 w_vel_center = buffer_array
+call MPI_Allreduce(u1_center, buffer_array, nloc, MPI_rprec, MPI_SUM, comm, ierr)
+u1_center = buffer_array
 #endif
 
 ! Update epsilon for the new timestep (for cfl_dt)
@@ -722,7 +736,7 @@ do s=1,nloc
         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
             v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
             wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
-            p_Ct_prime, jt_total                   
+            u1_center(s), p_Ct_prime, jt_total                   
 !    eta_val
     end if
 

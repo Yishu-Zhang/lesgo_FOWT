@@ -195,9 +195,9 @@ real(rprec) :: wave_freq = 120.3100_rprec
 
 ! Dynamic turbine Parameters 
 ! frequency of forced surge
-real(rprec), public :: u2_freq = 62.5_rprec 
+real(rprec), public :: u1_freq = 62.5_rprec 
 ! amplitude of forced surge
-real(rprec), public :: u2_amp = 2.0_rprec
+real(rprec), public :: u1_amp = 2.0_rprec
 
 ! frequency of forced tilting
 real(rprec), public :: theta2_freq = 62.5_rprec
@@ -206,7 +206,7 @@ real(rprec), public :: theta2_amp = 5.73_rprec
 ! second amplitude of forced tilting
 real(rprec), public :: phi2 = 0.0_rprec
 
-
+integer, public :: freq_type = 2
 
 ! Prescribe bottom and top wall streamwise velocity
 ! Only for DNS (sgs=.false.) and full channel (lbc_mom = ubc_mom = 1)

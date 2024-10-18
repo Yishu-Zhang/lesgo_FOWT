@@ -21,7 +21,9 @@
 module phase_average
 !*******************************************************************************
 use types, only : rprec
-use param, only : nx, ny, nz, lbz
+use param, only : nx, ny, nz, lbz, freq_type
+
+implicit none
 
 private
 public :: pavg_t
@@ -37,6 +39,7 @@ type pavg_t
     real(rprec), dimension(:,:,:,:), allocatable ::  fx, fy, fz
     real(rprec), dimension(:), allocatable :: np
     real(rprec) :: time
+!    integer, public :: freq_type
     logical :: initialized = .false.
 contains
     procedure, public :: init
@@ -195,7 +198,7 @@ subroutine compute(this)
 !
 use param, only : dt, ubc_mom, lbc_mom, coord, nproc
 use param, only : pi, total_time, jt_total, lbz
-use param, only : wave_freq, pavg_tstart, pavg_nbins, theta2_freq
+use param, only : wave_freq, pavg_tstart, pavg_nbins, theta2_freq, u1_freq
 use sim_param, only : u, v, w, p
 use sim_param, only : dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz, dpdz
 use sim_param, only : txx, txy, tyy, txz, tyz, tzz
@@ -208,6 +211,7 @@ class(pavg_t), intent(inout) :: this
 real(rprec), dimension(nx,ny,lbz:nz) :: u_w, v_w, w_uv, pres_real, dpdz_uv
 real(rprec) :: Tf
 integer :: bin
+
 
 ! Interpolation onto other grids
 w_uv(1:nx,1:ny,lbz:nz) = interp_to_uv_grid(w(1:nx,1:ny,lbz:nz), lbz )
@@ -230,8 +234,15 @@ pres_real(1:nx,1:ny,lbz:nz) = p(1:nx,1:ny,lbz:nz)                              &
     + v(1:nx,1:ny,lbz:nz)**2 )
 
 this%time = total_time - pavg_tstart  
-!Tf = 2._rprec*pi/wave_freq
-Tf = 1._rprec/theta2_freq
+select case(freq_type)
+        case (0)
+        Tf = 2._rprec*pi/wave_freq
+        case (1)
+        Tf = 1._rprec/theta2_freq
+        case (2)
+        Tf = 1._rprec/u1_freq
+end select
+
 bin = ceiling(pavg_nbins/Tf*modulo(this%time,Tf))
 
 
@@ -298,7 +309,7 @@ subroutine pavg_compute(time,f,f_pavg)
 !*******************************************************************************
 
 use types, only : rprec
-use param, only : pi, wave_freq, pavg_nbins, theta2_freq
+use param, only : pi, wave_freq, pavg_nbins, theta2_freq, u1_freq
 use param, only : jt_total, coord
 implicit none
 
@@ -312,12 +323,18 @@ real(rprec) :: time_shift
 real(rprec) :: Tf
 integer :: bin
 
+
 !f_avg(:,:) = sum(f(:,:,:),2)/ny
 
-!Tf = 2._rprec*pi/wave_freq
-Tf = 1._rprec/theta2_freq
+select case(freq_type)
+        case (0)
+        Tf = 2._rprec*pi/wave_freq
+        case (1)
+        Tf = 1._rprec/theta2_freq
+        case (2)
+        Tf = 1._rprec/u1_freq
+end select
   
-
 bin = ceiling(pavg_nbins/Tf*modulo(time,Tf))
 f_pavg(:,:,:,bin) = f_pavg(:,:,:,bin) + f(:,:,:)
 
@@ -328,7 +345,7 @@ subroutine pavg_compute2d(time,f2,f_pavg2)
 !*******************************************************************************
 
 use types, only : rprec
-use param, only : pi, wave_freq, pavg_nbins, theta2_freq
+use param, only : pi, wave_freq, pavg_nbins, theta2_freq, u1_freq
 use param, only : jt_total, coord
 implicit none
 
@@ -341,8 +358,16 @@ real(rprec) :: time_shift
 real(rprec) :: Tf
 integer :: bin
 
-!Tf = 2._rprec*pi/wave_freq
-Tf = 1._rprec/theta2_freq
+
+select case(freq_type)
+        case (0)
+        Tf = 2._rprec*pi/wave_freq
+        case (1)
+        Tf = 1._rprec/theta2_freq
+        case (2)
+        Tf = 1._rprec/u1_freq
+end select
+
 bin = ceiling(pavg_nbins/Tf*modulo(time,Tf))
 f_pavg2(:,:,bin) = f_pavg2(:,:,bin) + f2(:,:)
 

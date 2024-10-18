@@ -1,4 +1,4 @@
-# Install script for directory: /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT
+# Install script for directory: /home/yishu/scratch4-cmeneve1/Yishu/Surge/lesgo_FOWT
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT/bld/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/yishu/scratch4-cmeneve1/Yishu/Surge/lesgo_FOWT/bld/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

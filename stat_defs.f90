@@ -86,6 +86,8 @@ type turbine_t
     real(rprec) :: omegax, omegay, omegaz
     ! original location of the turbine 
     real(rprec) :: xloc_og, yloc_og, height_og
+    ! translational velocity of the turbine 
+    real(rprec), allocatable, dimension(:,:,:) ::  u1, u2, u3
 end type turbine_t
 
 ! A collection of wind turbines
