@@ -570,7 +570,7 @@ select case(angle_type)
                                            wind_farm%turbine(s)%xloc_og,         &
                                            wind_farm%turbine(s)%yloc_og))
               wind_farm%turbine(s)%omegaz = 0.0_rprec
-              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         & 
+              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         &  
                                           wind_farm%turbine(s)%height_og*        &
                                           sin(wind_farm%turbine(s)%theta2*pi/180)
               wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
@@ -582,16 +582,25 @@ select case(angle_type)
         case (1)       ! Forced angle. Angle coming from equation
         do s = 1,nloc
              wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
-             wind_farm%turbine(s)%theta2 = (theta2_amp*sin(theta2_freq*2*pi*      & 
-                                           total_time) + phi2)
+             wind_farm%turbine(s)%theta2 = theta2_amp*sin(theta2_freq*2*pi*      & 
+                                           total_time) + phi2
              wind_farm%turbine(s)%omegax = 0.0_rprec
              wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time))*pi/180
              wind_farm%turbine(s)%omegaz = 0.0_rprec
-             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +           &  
+             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
+                                         x_amp*sin(x_freq*2*pi*total_time)+        &
                                          wind_farm%turbine(s)%height_og*           &
                                          sin(wind_farm%turbine(s)%theta2*pi/180)
              wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+             if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+             !     PRINT *, 'Allocating u for turbine ', s
+                 allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+             end if
+             !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+             !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+
+             wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
                                            cos(wind_farm%turbine(s)%theta2*pi/180)
         end do
@@ -628,7 +637,7 @@ do s = 1,nloc
   !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
   !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
     
-    wind_farm%turbine(s)%u1(:,:,:) = u1_amp*sin(u1_freq*2*pi*total_time)
+    wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
 end do
 !Each processor calculates the weighted disk-averaged velocity
 disk_avg_vel = 0._rprec
@@ -729,13 +738,13 @@ do s=1,nloc
 !        if (angle_type==0) then
 !                eta_val = (bilinear_interp(x(1:nx),y(1:ny),eta(:,:),                    &
 !                                           wind_farm%turbine(s)%xloc_og,    &
-!                                           wind_farm%turbine(s)%yloc_og))
+!                                         wind_farm%turbine(s)%yloc_og))
 !        else
 !                eta_val = 0.0 
 !        end if
-        write( forcing_fid(s), *) total_time_dim, u_vel_center(s),         &
-            v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,            &
-            wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,      &
+        write( forcing_fid(s), *) total_time_dim, wind_farm%turbine(s)%xloc,          & 
+            u_vel_center(s), v_vel_center(s), w_vel_center(s), -p_u_d,                &
+            -p_u_d_T, wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,       &
             u1_center(s), p_Ct_prime, jt_total                   
 !    eta_val
     end if

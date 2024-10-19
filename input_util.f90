@@ -845,10 +845,10 @@ do
                 Read (buff(equal_pos+1:), *) theta2_amp
             case ('PHI2')
                 Read (buff(equal_pos+1:), *) phi2
-            case ('U1_FREQ')
-                Read (buff(equal_pos+1:), *) u1_freq
-            case ('U1_AMP')
-                Read (buff(equal_pos+1:), *) u1_amp
+            case ('X_FREQ')
+                Read (buff(equal_pos+1:), *) x_freq
+            case ('X_AMP')
+                Read (buff(equal_pos+1:), *) x_amp
             case ('CT_PRIME')
                 read (buff(equal_pos+1:), *) Ct_prime
             case ('READ_PARAM')

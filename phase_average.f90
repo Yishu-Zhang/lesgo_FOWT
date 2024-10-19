@@ -198,7 +198,7 @@ subroutine compute(this)
 !
 use param, only : dt, ubc_mom, lbc_mom, coord, nproc
 use param, only : pi, total_time, jt_total, lbz
-use param, only : wave_freq, pavg_tstart, pavg_nbins, theta2_freq, u1_freq
+use param, only : wave_freq, pavg_tstart, pavg_nbins, theta2_freq, x_freq
 use sim_param, only : u, v, w, p
 use sim_param, only : dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz, dpdz
 use sim_param, only : txx, txy, tyy, txz, tyz, tzz
@@ -240,7 +240,7 @@ select case(freq_type)
         case (1)
         Tf = 1._rprec/theta2_freq
         case (2)
-        Tf = 1._rprec/u1_freq
+        Tf = 1._rprec/x_freq
 end select
 
 bin = ceiling(pavg_nbins/Tf*modulo(this%time,Tf))
@@ -309,7 +309,7 @@ subroutine pavg_compute(time,f,f_pavg)
 !*******************************************************************************
 
 use types, only : rprec
-use param, only : pi, wave_freq, pavg_nbins, theta2_freq, u1_freq
+use param, only : pi, wave_freq, pavg_nbins, theta2_freq, x_freq
 use param, only : jt_total, coord
 implicit none
 
@@ -332,7 +332,7 @@ select case(freq_type)
         case (1)
         Tf = 1._rprec/theta2_freq
         case (2)
-        Tf = 1._rprec/u1_freq
+        Tf = 1._rprec/x_freq
 end select
   
 bin = ceiling(pavg_nbins/Tf*modulo(time,Tf))
@@ -345,7 +345,7 @@ subroutine pavg_compute2d(time,f2,f_pavg2)
 !*******************************************************************************
 
 use types, only : rprec
-use param, only : pi, wave_freq, pavg_nbins, theta2_freq, u1_freq
+use param, only : pi, wave_freq, pavg_nbins, theta2_freq, x_freq
 use param, only : jt_total, coord
 implicit none
 
@@ -365,7 +365,7 @@ select case(freq_type)
         case (1)
         Tf = 1._rprec/theta2_freq
         case (2)
-        Tf = 1._rprec/u1_freq
+        Tf = 1._rprec/x_freq
 end select
 
 bin = ceiling(pavg_nbins/Tf*modulo(time,Tf))
