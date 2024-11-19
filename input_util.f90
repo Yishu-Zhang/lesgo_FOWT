@@ -859,6 +859,8 @@ do
                 read (buff(equal_pos+1:), *) dyn_theta2
             case ('DYN_CT_PRIME')
                 read (buff(equal_pos+1:), *) dyn_Ct_prime
+            case ('OUT_SYNC')
+                read (buff(equal_pos+1:), *) out_sync
             case ('USE_ROTATION')
                 read (buff(equal_pos+1:), *) use_rotation
             case ('TIP_SPEED_RATIO')

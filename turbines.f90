@@ -88,6 +88,8 @@ logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
 integer, public :: angle_type
+logical, public :: out_sync
+
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
 real(rprec) :: sx           ! spacing in the x-direction, multiple of diameter
@@ -103,7 +105,7 @@ real(rprec), dimension(:), allocatable :: Ct_prime_time
 
 ! Input files
 character(:), allocatable :: input_folder
-character(:), allocatable :: param_dat, theta1_dat, theta2_dat, Ct_prime_dat
+character(:), allocatable :: param_dat, theta1_dat, theta2_dat, Ct_prime_dat, motion_dat
 
 ! Output files
 character(:), allocatable :: output_folder
@@ -152,6 +154,7 @@ allocate(param_dat, source = path // input_folder // 'param.dat')
 allocate(theta1_dat, source = path // input_folder // 'theta1.dat')
 allocate(theta2_dat, source = path // input_folder // 'theta2.dat')
 allocate(Ct_prime_dat, source = path // input_folder // 'Ct_prime.dat')
+allocate(motion_dat, source = path // input_folder // 'motion.dat')
 allocate(output_folder, source = 'turbine/')
 allocate(vel_top_dat, source = path // output_folder // 'vel_top.dat')
 allocate(u_d_T_dat, source = path // output_folder // 'u_d_T.dat')
@@ -197,6 +200,10 @@ k_end = nz
 
 ! Read dynamic control input files
 call read_control_files
+
+
+! Read Asynchronized motion
+call read_FOWT_motion_files 
 
 !Compute a lookup table object for the indicator function
 delta1 = alpha1 * sqrt(dx**2 + dy**2 + dz**2)
@@ -506,6 +513,9 @@ real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
 real(rprec), pointer :: p_Ct_prime => null()
 integer, pointer :: p_icp => null(), p_jcp => null(), p_kcp => null()
 real(rprec), pointer :: p_omegax => null(), p_omegay => null(), p_omegaz => null()
+real(rprec), pointer :: p_theta2_amp => null(), p_theta2_freq => null(), p_phi2 => null()
+real(rprec), pointer :: p_x_amp => null(), p_x_freq => null(), p_phase_x => null()
+real(rprec), pointer :: p_x => null(), p_theta2 => null()
 ! real(rprec), pointer :: p_u1 => null()
 
 integer :: fid
@@ -580,30 +590,67 @@ select case(angle_type)
         call turbines_nodes
         
         case (1)       ! Forced angle. Angle coming from equation
-        do s = 1,nloc
-             wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
-             wind_farm%turbine(s)%theta2 = theta2_amp*sin(theta2_freq*2*pi*      & 
+        if (out_sync) then
+
+            do s = 1,nloc
+                !set pointers
+                p_x_amp => wind_farm%turbine(s)%x_amp
+                p_x_freq => wind_farm%turbine(s)%x_freq
+                p_phase_x => wind_farm%turbine(s)%phase_x
+
+                p_theta2_amp => wind_farm%turbine(s)%theta2_amp
+                p_theta2_freq => wind_farm%turbine(s)%theta2_freq
+                p_phi2 => wind_farm%turbine(s)%phi2
+                
+                
+                wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
+                wind_farm%turbine(s)%theta2 = p_theta2_amp*sin(p_theta2_freq*2*pi*      &
+                                              total_time) + p_phi2
+                wind_farm%turbine(s)%omegay = (p_theta2_freq*2*pi*p_theta2_amp*          &
+                                              cos(p_theta2_freq*2*pi*total_time))*pi/180
+                wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &
+                                            p_x_amp*sin(p_x_freq*2*pi*total_time)+        &
+                                            wind_farm%turbine(s)%height_og*           &
+                                            sin(wind_farm%turbine(s)%theta2*pi/180)
+                wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+                   if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+                   !     PRINT *, 'Allocating u for turbine ', s
+                         allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+                   end if
+                   !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+                   !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+                wind_farm%turbine(s)%u1(:,:,:) = p_x_amp*p_x_freq*                &
+                                                 sin(p_x_freq*2*pi*total_time)
+                wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                                                 cos(wind_farm%turbine(s)%theta2*pi/180)
+            end do
+
+        else 
+                do s = 1,nloc
+                        wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
+                        wind_farm%turbine(s)%theta2 = theta2_amp*sin(theta2_freq*2*pi*      & 
                                            total_time) + phi2
-             wind_farm%turbine(s)%omegax = 0.0_rprec
-             wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
+                        wind_farm%turbine(s)%omegax = 0.0_rprec
+                        wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time))*pi/180
-             wind_farm%turbine(s)%omegaz = 0.0_rprec
-             wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
+                        wind_farm%turbine(s)%omegaz = 0.0_rprec
+                        wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
                                          x_amp*sin(x_freq*2*pi*total_time)+        &
                                          wind_farm%turbine(s)%height_og*           &
                                          sin(wind_farm%turbine(s)%theta2*pi/180)
-             wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-             if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
-             !     PRINT *, 'Allocating u for turbine ', s
-                 allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
-             end if
-             !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
-             !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+                        wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+                        if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+                        !     PRINT *, 'Allocating u for turbine ', s
+                        allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+                        end if
+                        !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+                        !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
 
-             wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
-             wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                        wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
+                        wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
                                            cos(wind_farm%turbine(s)%theta2*pi/180)
-        end do
+                end do
+        end if
         call turbines_nodes
 
         case (2)       ! Dyanmic angles. Angles coming from table
@@ -1106,4 +1153,95 @@ end if
 
 end subroutine read_control_files
 
+
+!*******************************************************************************
+subroutine read_FOWT_motion_files
+!*******************************************************************************
+!
+! This subroutine reads the input files for FOWT motions with freq, amp,
+! and phase. This is calles from turbines_forcing.
+!
+use param, only: pi
+use messages
+implicit none
+
+character(*), parameter :: sub_name = mod_name // '.read_FOWT_motion_files'
+
+integer :: fid, i, num_t
+logical :: exst
+
+!real(rprec), pointer :: p_theta2_amp => null(), p_theta2_freq => null(), p_phi2 => null()
+!real(rprec), pointer :: p_x_amp => null(), p_x_freq => null(), p_phase_x => null()
+!real(rprec), pointer :: p_x => null(), p_theta2 => null()
+
+
+
+! Read motion parameters from file if needed
+! Check if file exists and open
+    inquire (file = motion_dat, exist = exst)
+    if (.not. exst) then
+        call error (sub_name, 'file ' // motion_dat // 'does not exist')
+    end if
+
+    ! Check that there are enough lines from which to read data
+    nloc = count_lines(motion_dat)
+    if (nloc < num_x*num_y) then
+        nloc = num_x*num_y
+        call error(sub_name, motion_dat // 'must have num_x*num_y lines')
+    else if (nloc > num_x*num_y) then
+    call warn(sub_name, motion_dat // ' has more than num_x*num_y lines. '  &
+             // 'Only reading first num_x*num_y lines')
+    end if
+
+   ! Read from motion parameters file, which should be in this format:
+   ! x_amp [meters], x_freq [rad/s], phase_x [meters] theta2_amp [degrees],
+   ! freq2 [rad/s], phi2 [degrees]
+    write(*,*) "Reading from", motion_dat
+    open(newunit=fid, file=motion_dat, status='unknown', form='formatted',      &
+        position='rewind')
+    do s = 1, nloc
+        read(fid,*) wind_farm%turbine(s)%x_amp, wind_farm%turbine(s)%x_freq,     &
+            wind_farm%turbine(s)%phase_x, wind_farm%turbine(s)%theta2_amp,       &
+            wind_farm%turbine(s)%theta2_freq, wind_farm%turbine(s)%phi2               
+  
+         !set pointers
+         !p_x_amp => wind_farm%turbine(s)%x_amp
+         !p_x_freq => wind_farm%turbine(s)%x_freq
+         !p_phase_x => wind_farm%turbine(s)%phase_x
+        
+         !p_theta2_amp => wind_farm%turbine(s)%theta2_amp
+         !p_theta2_freq => wind_farm%turbine(s)%theta2_freq
+         !p_phi2 => wind_farm%turbine(s)%phi2
+
+         !wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
+         !wind_farm%turbine(s)%theta2 = p_theta2_amp*sin(p_theta2_freq*2*pi*      &
+         !                                  total_time) + p_phi2
+         !wind_farm%turbine(s)%omegay = (p_theta2_freq*2*pi*p_theta2_amp*          &
+         !                                  cos(p_theta2_freq*2*pi*total_time))*pi/180
+         !wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &
+         !                                p_x_amp*sin(p_x_freq*2*pi*total_time)+        &
+         !                                wind_farm%turbine(s)%height_og*           &
+         !                                sin(wind_farm%turbine(s)%theta2*pi/180)
+         !wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+         !if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+         !     PRINT *, 'Allocating u for turbine ', s
+         !    allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+         !end if
+         !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+         !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+         !wind_farm%turbine(s)%u1(:,:,:) = p_x_amp*p_x_freq*sin(p_x_freq*2*pi*total_time)
+         !wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+         !                                  cos(wind_farm%turbine(s)%theta2*pi/180)
+   
+                                  
+    end do
+    close(fid)
+
+
+
+! end if
+
+end subroutine read_FOWT_motion_files 
+
 end module turbines
+

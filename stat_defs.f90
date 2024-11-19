@@ -88,6 +88,12 @@ type turbine_t
     real(rprec) :: xloc_og, yloc_og, height_og
     ! translational velocity of the turbine 
     real(rprec), allocatable, dimension(:,:,:) ::  u1, u2, u3
+    ! asynchronic turbine surge motion
+    real(rprec) :: x_amp, x_freq, phase_x
+    ! asynchronic turbine pitch motion
+    real(rprec) :: theta2_amp, theta2_freq, phi2
+
+
 end type turbine_t
 
 ! A collection of wind turbines

@@ -60,10 +60,10 @@ RM = /data/apps/extern/spack_on/gcc/9.3.0/cmake/3.27.7-iygsadyhjln3t7tr73pq56arn
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT
+CMAKE_SOURCE_DIR = /home/yishu/scratch4-cmeneve1/Yishu/Phase/lesgo_FOWT
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT/bld
+CMAKE_BINARY_DIR = /home/yishu/scratch4-cmeneve1/Yishu/Phase/lesgo_FOWT/bld
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -90,9 +90,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT/bld/CMakeFiles /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT/bld//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/Phase/lesgo_FOWT/bld/CMakeFiles /home/yishu/scratch4-cmeneve1/Yishu/Phase/lesgo_FOWT/bld//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/Pitch/lesgo_FOWT/bld/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/Phase/lesgo_FOWT/bld/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
