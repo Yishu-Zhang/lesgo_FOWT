@@ -729,7 +729,7 @@ end if
 !  Determine if phase averages are to be calculated
 if (pavg_calc) then
     ! Are we between the start and stop timesteps?
-    if ((floor(total_time) >= pavg_tstart).and.(floor(total_time) <= pavg_tend)) then
+    if ((jt_total >= pavg_tstart).and.(jt_total <= pavg_tend)) then
         ! Check if we have initialized tavg
         if (.not.pavg%initialized) then
             if (coord == 0) then

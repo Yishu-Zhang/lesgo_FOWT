@@ -233,7 +233,7 @@ pres_real(1:nx,1:ny,lbz:nz) = p(1:nx,1:ny,lbz:nz)                              &
     - 0.5 * ( u(1:nx,1:ny,lbz:nz)**2 + w_uv(1:nx,1:ny,lbz:nz)**2               &
     + v(1:nx,1:ny,lbz:nz)**2 )
 
-this%time = total_time - pavg_tstart  
+this%time = total_time - pavg_tstart * dt  
 select case(freq_type)
         case (0)
         Tf = 2._rprec*pi/wave_freq

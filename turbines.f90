@@ -605,7 +605,7 @@ select case(angle_type)
                 
                 wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
                 wind_farm%turbine(s)%theta2 = p_theta2_amp*sin(p_theta2_freq*2*pi*      &
-                                              total_time) + p_phi2
+                                              total_time + p_phi2)
                 wind_farm%turbine(s)%omegay = (p_theta2_freq*2*pi*p_theta2_amp*          &
                                               cos(p_theta2_freq*2*pi*total_time))*pi/180
                 wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &
@@ -629,7 +629,7 @@ select case(angle_type)
                 do s = 1,nloc
                         wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
                         wind_farm%turbine(s)%theta2 = theta2_amp*sin(theta2_freq*2*pi*      & 
-                                           total_time) + phi2
+                                           total_time + phi2)
                         wind_farm%turbine(s)%omegax = 0.0_rprec
                         wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time))*pi/180
