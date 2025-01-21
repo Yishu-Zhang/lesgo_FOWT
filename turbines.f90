@@ -203,7 +203,10 @@ call read_control_files
 
 
 ! Read Asynchronized motion
-call read_FOWT_motion_files 
+
+if (out_sync) then 
+        call read_FOWT_motion_files 
+end if
 
 !Compute a lookup table object for the indicator function
 delta1 = alpha1 * sqrt(dx**2 + dy**2 + dz**2)
@@ -607,7 +610,7 @@ select case(angle_type)
                 wind_farm%turbine(s)%theta2 = p_theta2_amp*sin(p_theta2_freq*2*pi*      &
                                               total_time + p_phi2)
                 wind_farm%turbine(s)%omegay = (p_theta2_freq*2*pi*p_theta2_amp*          &
-                                              cos(p_theta2_freq*2*pi*total_time))*pi/180
+                                              cos(p_theta2_freq*2*pi*total_time + p_phi2))*pi/180
                 wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &
                                             p_x_amp*sin(p_x_freq*2*pi*total_time)+        &
                                             wind_farm%turbine(s)%height_og*           &
@@ -632,7 +635,7 @@ select case(angle_type)
                                            total_time + phi2)
                         wind_farm%turbine(s)%omegax = 0.0_rprec
                         wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
-                                           cos(theta2_freq*2*pi*total_time))*pi/180
+                                           cos(theta2_freq*2*pi*total_time + phi2))*pi/180
                         wind_farm%turbine(s)%omegaz = 0.0_rprec
                         wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
                                          x_amp*sin(x_freq*2*pi*total_time)+        &
