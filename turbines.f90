@@ -89,6 +89,8 @@ logical, public :: adm_correction
 integer, public :: tbase
 integer, public :: angle_type
 logical, public :: out_sync
+! Reduction factor based on time filter
+real(rprec), public :: co_red
 
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
@@ -605,11 +607,18 @@ select case(angle_type)
                 p_theta2_freq => wind_farm%turbine(s)%theta2_freq
                 p_phi2 => wind_farm%turbine(s)%phi2
                 
-                
+
+           ! Here we calc. a prefactor for reduced turbine motion
+           ! For now, only pitch motion is added to reflect reduction
+
+           co_red = sqrt(1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)/    &
+                   (1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)
+
+           ! The following motions are based on prefactor co_red
                 wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
-                wind_farm%turbine(s)%theta2 = p_theta2_amp*sin(p_theta2_freq*2*pi*      &
+                wind_farm%turbine(s)%theta2 = co_red * p_theta2_amp*sin(p_theta2_freq*2*pi*      &
                                               total_time + p_phi2)
-                wind_farm%turbine(s)%omegay = (p_theta2_freq*2*pi*p_theta2_amp*          &
+                wind_farm%turbine(s)%omegay = co_red * (p_theta2_freq*2*pi*p_theta2_amp*          &
                                               cos(p_theta2_freq*2*pi*total_time + p_phi2))*pi/180
                 wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &
                                             p_x_amp*sin(p_x_freq*2*pi*total_time)+        &
@@ -628,13 +637,20 @@ select case(angle_type)
                                                  cos(wind_farm%turbine(s)%theta2*pi/180)
             end do
 
-        else 
+        else  
+              
+                ! Calculate prefactor for time filtered turbine motion
+                co_red = sqrt(1+4*pi*pi*theta2_freq*theta2_freq*filter_t*filter_t)/    &
+                (1+4*pi*pi*theta2_freq*theta2_freq*filter_t*filter_t)
+              
+        
+ 
                 do s = 1,nloc
                         wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
-                        wind_farm%turbine(s)%theta2 = theta2_amp*sin(theta2_freq*2*pi*      & 
+                        wind_farm%turbine(s)%theta2 = co_red * theta2_amp*sin(theta2_freq*2*pi*      & 
                                            total_time + phi2)
                         wind_farm%turbine(s)%omegax = 0.0_rprec
-                        wind_farm%turbine(s)%omegay = (theta2_freq*2*pi*theta2_amp*          &
+                        wind_farm%turbine(s)%omegay = co_red * (theta2_freq*2*pi*theta2_amp*          &
                                            cos(theta2_freq*2*pi*total_time + phi2))*pi/180
                         wind_farm%turbine(s)%omegaz = 0.0_rprec
                         wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
@@ -795,7 +811,7 @@ do s=1,nloc
         write( forcing_fid(s), *) total_time_dim, wind_farm%turbine(s)%xloc,          & 
             u_vel_center(s), v_vel_center(s), w_vel_center(s), -p_u_d,                &
             -p_u_d_T, wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,       &
-            u1_center(s), p_Ct_prime, jt_total                   
+            p_Ct_prime, jt_total                   
 !    eta_val
     end if
 

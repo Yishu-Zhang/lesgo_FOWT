@@ -877,6 +877,8 @@ do
                 read (buff(equal_pos+1:), *) adm_correction
             case ('TBASE')
                 read (buff(equal_pos+1:), *) tbase
+            case ('FILTER_T')
+            read (buff(equal_pos+1:), *) filter_t
             case default
                 if (coord == 0) write(*,*) 'Found unused data value in '       &
                     // block_name // ' block: ' // buff(1:equal_pos-1)

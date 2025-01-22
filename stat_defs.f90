@@ -92,6 +92,8 @@ type turbine_t
     real(rprec) :: x_amp, x_freq, phase_x
     ! asynchronic turbine pitch motion
     real(rprec) :: theta2_amp, theta2_freq, phi2
+    ! filtering time scale for turbine motion
+    real(rprec) :: filter_t
 
 
 end type turbine_t

@@ -130,6 +130,7 @@ write(2,f_fmt) 'theta2_amp : ', theta2_amp
 write(2,f_fmt) 'theta2_freq : ', theta2_freq
 write(2,f_fmt) 'x_amp : ', x_amp
 write(2,f_fmt) 'x_freq : ', x_freq
+write(2,f_fmt) 'filter_t : ', filter_t
 write(2,c_fmt) ''
 write(2,c_fmt) '---------------------------------------------------'
 write(2,c_fmt) 'DATA OUTPUT PARAMETERS'

@@ -207,6 +207,9 @@ real(rprec), public :: theta2_amp = 0.0_rprec
 real(rprec), public :: phi2 = 0.0_rprec
 integer, public :: freq_type = 2
 
+! Filtering time scale to reduce the amplitude od turbine motion
+real(rprec), public :: filter_t = 0.008_rprec
+
 ! Prescribe bottom and top wall streamwise velocity
 ! Only for DNS (sgs=.false.) and full channel (lbc_mom = ubc_mom = 1)
 real(rprec) :: ubot = 0.0_rprec   ! nondimensional
