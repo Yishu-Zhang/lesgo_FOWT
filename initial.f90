@@ -481,6 +481,7 @@ use param
 use sim_param, only : u, v, w
 use messages, only : error
 use coriolis, only : coriolis_forcing, G, alpha, fc
+use pressure_grad, only : dp_control
 #ifdef PPTURBINES
 use turbines, only : turbine_vel_init
 #endif
@@ -526,8 +527,13 @@ do jz = 1, nz
     call turbine_vel_init (zo_turbines)
     arg = (1._rprec/vonk)*log(z/zo_turbines)
 #endif
+    if (PI_control_p_force) then
+        mean_p_force_mag = sqrt(dp_control**2)
+    else 
+        mean_p_force_mag = sqrt(mean_p_force_x**2 + mean_p_force_y**2)
+    endif
 
-    mean_p_force_mag = sqrt(mean_p_force_x**2 + mean_p_force_y**2)
+
     if (coriolis_forcing > 0) then
         if (arg < G) then
             ubar(jz) = arg*cos(alpha)
@@ -537,7 +543,7 @@ do jz = 1, nz
             vbar(jz) = G*sin(alpha)
         endif
     else
-        if (mean_p_force_mag > 0._rprec) then
+        if (use_mean_p_force .and. mean_p_force_mag > 0._rprec) then
             ubar(jz) = arg*mean_p_force_x/mean_p_force_mag
             vbar(jz) = arg*mean_p_force_y/mean_p_force_mag
         else

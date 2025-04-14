@@ -422,6 +422,9 @@ subroutine flow_cond_block()
 !*******************************************************************************
 use param
 use sponge
+use pressure_grad
+
+
 
 #ifdef PPHIT
 ! Type hit has all the information inside
@@ -517,7 +520,16 @@ do
                 read (buff(equal_pos+1:), *) stop_random_force
             case ('RMS_RANDOM_FORCE')
                 read (buff(equal_pos+1:), *) rms_random_force
-
+            case ('PI_CONTROL_P_FORCE')
+                read (buff(equal_pos+1:), *) PI_control_p_force
+            case ('U_SET')
+                read (buff(equal_pos+1:), *) u_set
+            case ('KP_P')
+                read (buff(equal_pos+1:), *) Kp_P
+            case ('KI_P')
+                read (buff(equal_pos+1:), *) Ki_P
+            case ('KD_P')
+                read (buff(equal_pos+1:), *) Kd_P
 #ifdef PPHIT
             ! Read the input for HIT case
 

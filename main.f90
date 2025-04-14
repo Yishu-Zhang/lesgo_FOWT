@@ -31,14 +31,14 @@ use param
 use sim_param
 use grid_m
 use io, only : energy, output_loop, output_final, jt_total
-use io, only : write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug
+use io, only : write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug, write_u_top
 use fft
 use derivatives, only : filt_da, ddz_uv, ddz_w
 use test_filtermodule
 use cfl_util
 use sgs_stag_util, only : sgs_stag
 use forcing
-use functions, only: get_tau_wall_bot, get_tau_wall_top
+use functions, only: get_tau_wall_bot, get_tau_wall_top, get_u_top
 use functions, only: get_eqm_wall_bot, get_wpm_wall_bot, get_uLES, get_unswpm_wall_bot
 
 #ifdef PPMPI
@@ -61,6 +61,7 @@ use scalars, only : buoyancy_force, scalars_transport, scalars_deriv
 
 use sponge
 use coriolis, only : coriolis_calc, coriolis_forcing, alpha, G, phi_actual
+use pressure_grad
 use messages
 
 implicit none
@@ -82,6 +83,7 @@ real(rprec) :: clock_total_f = 0.0
 real(rprec) :: rbuffer
 real(rprec) :: maxdummy ! Used to calculate maximum with mpi_allreduce
 real(rprec) :: tau_top   ! Used to write top wall stress at first proc
+real(rprec) :: u_top     ! Used to write top velocity  
 #endif
 
 ! Initialize MPI
@@ -237,6 +239,10 @@ time_loop: do jt_step = nstart, nsteps
         call forcing_random()
     end if
 
+    ! Pi control dpdx_i so that a constant velocity is maintained at top
+    if (PI_control_p_force) then
+        call pressure_grad_calc()
+    end if
     !//////////////////////////////////////////////////////
     !/// APPLIED FORCES                                 ///
     !//////////////////////////////////////////////////////
@@ -404,6 +410,18 @@ time_loop: do jt_step = nstart, nsteps
             MPI_SUM, comm, ierr)
         tau_top = maxdummy
 #endif
+        ! Send top velocity to bottom process
+#ifdef PPMPI
+        if (coord == nproc-1) then
+            u_top = get_u_top()
+        else
+            u_top = 0._rprec
+        endif
+
+        call mpi_allreduce(u_top, maxdummy, 1, mpi_rprec,               &
+            MPI_SUM, comm, ierr)
+        u_top = maxdummy
+#endif
 
        if (coord == 0) then
             write(*,*)
@@ -432,6 +450,13 @@ time_loop: do jt_step = nstart, nsteps
 #else
             write(*,'(a,E15.7)') '  Top wall stress: ', get_tau_wall_top()
 #endif
+
+#ifdef PPMPI
+            write(*,'(a,E15.7)') '  Top wall velocity: ', u_top
+#else
+            write(*,'(a,E15.7)') '  Top wall velocity: ', get_u_top()
+#endif
+
             write(*,*)
             write(*,'(1a)') 'Simulation wall times (s): '
             write(*,'(1a,E15.7)') '  Iteration: ', clock % time
@@ -453,9 +478,11 @@ time_loop: do jt_step = nstart, nsteps
             call write_tau_wall_bot()
             call write_wave()
             call write_debug()
+
         end if
         if(coord == nproc-1) then
             call write_tau_wall_top()
+            call write_u_top()
         end if
 
         call mpi_barrier(comm, ierr)

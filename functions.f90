@@ -30,7 +30,7 @@ private
 public interp_to_uv_grid, trilinear_interp, trilinear_interp_w, binary_search,  &
     bilinear_interp, linear_interp, cross_product, cell_indx, buff_indx,        &
     interp_to_w_grid, get_tau_wall_bot, get_tau_wall_top, get_eqm_wall_bot,    &
-    get_wpm_wall_bot, count_lines, get_uLES, get_unswpm_wall_bot
+    get_wpm_wall_bot, count_lines, get_uLES, get_unswpm_wall_bot, get_u_top
 
 character (*), parameter :: mod_name = 'functions'
 
@@ -208,7 +208,7 @@ use param, only : nx, ny, nz, L_x, L_y, L_z, lbz
 implicit none
 
 character (*), intent (in) :: indx
-real(rprec), intent(in) :: dx
+real(rprec), intent(in) :: dx 
 real(rprec) :: px ! Global value
 character (*), parameter :: func_name = mod_name // '.cell_indx'
 real(rprec), parameter :: thresh = 1.e-9_rprec
@@ -395,6 +395,10 @@ autowrap_j => grid % autowrap_j
 !  Initialize stuff
 u1 = 0._rprec; u2 = 0._rprec; u3 = 0._rprec;
 u4 = 0._rprec; u5 = 0._rprec; u6 = 0._rprec
+
+! Debug
+! print *, "i","dx:", dx, "px:", xyz(1)
+! print *, "j","dy:", dy, "py:", xyz(2)
 
 ! X and Y index not affected by z-grid details
 ! Determine istart, jstart by calling cell_indx
@@ -1034,6 +1038,31 @@ enddo
 twall = sqrt( (txsum/(nx*ny))**2 + (tysum/(nx*ny))**2  )
 
 end function get_tau_wall_top
+
+!*******************************************************************************
+function get_u_top() result(utop)
+!*******************************************************************************
+!
+! This function provides plane-averaged value of x velocity magnitude
+use types, only: rprec
+use param, only : nx, ny, nz
+use sim_param, only : u
+
+implicit none
+real(rprec) :: utop, utopsum
+integer :: jx, jy
+
+utopsum = 0._rprec
+!ysum = 0._rprec
+do jx = 1, nx
+do jy = 1, ny
+    utopsum = utopsum + u(jx,jy,nz)
+!    tysum = tysum + tyz(jx,jy,nz)
+enddo
+enddo
+utop = utopsum / (nx*ny)
+
+end function get_u_top
 
 !*******************************************************************************
 function count_lines(fname) result(N)

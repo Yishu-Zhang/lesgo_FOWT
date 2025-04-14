@@ -34,6 +34,7 @@ type pid_t
     real(rprec) :: e_prev = 0               ! previous error
     real(rprec) :: y_set = 0                ! output setoint
     real(rprec) :: Kp = 0, Ki = 0, Kd = 0   ! controller gains
+    logical :: nonlinear_error = .false.   ! Option to calculate error (y - y_set)^2
 contains
     procedure, private :: advance_set, advance_noset
     generic, public :: advance => advance_set, advance_noset
@@ -46,9 +47,10 @@ end interface pid_t
 contains
 
 !*******************************************************************************
-function constructor(Kp, Ki, Kd, y_set) result(this)
+function constructor(Kp, Ki, Kd, y_set, nonlinear_error) result(this)
 !*******************************************************************************
 real(rprec), intent(in) :: Kp, Ki, Kd, y_set
+logical, optional, intent(in) :: nonlinear_error
 type(pid_t) :: this
 
 if (Kp >= 0) then
@@ -57,7 +59,7 @@ else
     call error ('pid_t/constructor', 'Kp must be non-negative')
 endif
 
-if (Kp >= 0) then
+if (Ki >= 0) then
     this%Ki = Ki
 else
     call error ('pid_t/constructor', 'Ki must be non-negative')
@@ -71,6 +73,13 @@ end if
 
 this%y_set = y_set
 
+! Set the error calculation mode (default is false if not provided)
+if (present(nonlinear_error)) then
+    this%nonlinear_error = nonlinear_error
+else
+    this%nonlinear_error = .false.  ! Default to linear error
+end if
+
 end function constructor
 
 !*******************************************************************************
@@ -83,15 +92,19 @@ real(rprec) :: u
 ! Save previous error
 this%e_prev = this%e
 
-! Calculate new error
-this%e = this%y_set - y
+! Calculate new error based on the selected mode
+if (this%nonlinear_error) then
+    this%e = (this%y_set - y) * abs(this%y_set - y)  ! Nonlinear error
+else
+    this%e = this%y_set - y                           ! Linear error
+end if
 
 ! Integrate error
 this%e_int = this%e_int + this%e*dt
 
+
 ! Calculate output
 u = this%Kp*this%e + this%Ki*this%e_int + this%Kd*(this%e - this%e_prev)/dt
-
 end function advance_noset
 
 !*******************************************************************************
@@ -103,7 +116,6 @@ real(rprec) :: u
 
 this%y_set = y_set
 u = this%advance_noset(y, dt)
-
 end function advance_set
 
 end module pid_m

@@ -29,6 +29,7 @@ use param, only : path
 use param, only : USE_MPI, coord, dt, jt_total, nsteps
 use param, only : use_cfl_dt, cfl, cfl_f, dt_dim, z_i, u_star
 use param, only : wave_type
+use param, only : PI_control_p_force
 use iwmles
 use param, only : lbc_mom
 use sponge
@@ -51,6 +52,7 @@ use coriolis
 use inflow, only : inflow_init
 
 use wave_spectrum, only : spectrum_calc
+use pressure_grad, only : pressure_grad_init
 
 #ifdef PPMPI
 use mpi_defs, only : initialize_mpi
@@ -207,4 +209,8 @@ if( use_cfl_dt ) then
     endif
 endif
 
+! Initialize PID pressure control
+if (PI_control_p_force) then 
+    call pressure_grad_init
+end if
 end subroutine initialize

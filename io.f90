@@ -45,7 +45,7 @@ save
 private
 
 public jt_total, openfiles, energy, output_loop, output_final, output_init,    &
-    write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug
+    write_tau_wall_bot, write_tau_wall_top, write_wave, write_debug, write_u_top
 
 ! Where to end with nz index.
 integer :: nz_end
@@ -240,6 +240,29 @@ write(2,*) jt_total, total_time, total_time_dim, turnovers, dt, dt_dim,        &
 close(2)
 
 end subroutine write_tau_wall_top
+
+!*******************************************************************************
+subroutine write_u_top()
+!*******************************************************************************
+use types, only : rprec
+use param, only : jt_total, total_time, total_time_dim, dt, dt_dim, wbase
+use pressure_grad, only : dp_control
+use functions, only : get_u_top
+implicit none
+
+open(2,file=path // 'output/u_top.dat', status='unknown',               &
+    form='formatted', position='append')
+
+! one time header output
+if (jt_total==wbase) write(2,*)                                                &
+        'jt_total, total_time, total_time_dim, dt, dt_dim, 1.0, u_top, dp_control'
+
+! continual time-related output
+write(2,*) jt_total, total_time, total_time_dim, dt, dt_dim,        &
+    1.0, get_u_top(), dp_control
+close(2)
+
+end subroutine write_u_top
 
 #ifdef PPCGNS
 #ifdef PPMPI
@@ -1368,7 +1391,7 @@ subroutine checkpoint ()
 !*******************************************************************************
 use iwmles
 use param, only : nz, checkpoint_file, tavg_calc, lbc_mom, L_x, L_y, L_z, path,&
-         pavg_calc
+         pavg_calc, PI_control_p_force
 #ifdef PPMPI
 use param, only : comm, ierr
 #endif
@@ -1386,6 +1409,7 @@ use scalars, only : scalars_checkpoint
 #endif
 use coriolis
 use wave_spectrum, only : wave_spectrum_checkpoint
+use pressure_grad, only : pressure_grad_finalize
 
 ! HIT Inflow
 #ifdef PPHIT
@@ -1453,8 +1477,6 @@ call turbines_checkpoint
 call scalars_checkpoint()
 #endif
 
-call coriolis_finalize()
-
 if (wave_type==1 .and. coord==0) then
    call wave_spectrum_checkpoint()
 end if
@@ -1465,6 +1487,10 @@ if (coord == 0) then
     open (1, file=fcumulative_time)
     write(1, *) jt_total, total_time, total_time_dim, dt, cfl_w
     close(1)
+end if
+
+if (PI_control_p_force) then
+   call pressure_grad_finalize()
 end if
 
 end subroutine checkpoint

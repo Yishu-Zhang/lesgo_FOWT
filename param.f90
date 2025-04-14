@@ -244,6 +244,15 @@ logical :: eval_mean_p_force = .false.
 real(rprec) :: mean_p_force_x = 1.0_rprec
 real(rprec) :: mean_p_force_y = 0.0_rprec
 
+! if true, control and imposes a pressure gradient in the x-direction to force the flow maintaining a constant velocity at top
+logical :: PI_control_p_force = .false.
+! specify how many time steps random force should be used
+! integer :: pid_time_P = 1000000
+
+
+
+
+
 ! if true, provides random forcing for v & w until certain number of time steps
 logical :: use_random_force = .false.
 ! specify how many time steps random force should be used
