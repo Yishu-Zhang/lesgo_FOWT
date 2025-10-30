@@ -23,6 +23,11 @@ module pressure_grad
 ! This module contains all of the subroutines associated with scalar transport
 use types, only : rprec
 use pid_m
+
+#ifdef PPMPI
+use mpi
+#endif
+
 implicit none
 
 save
@@ -58,40 +63,51 @@ contains
 subroutine pressure_grad_init
 !*******************************************************************************
 ! This subroutine initializes the variables for the pressure gradient 
-use param, only : z_i, u_star, L_z, nz, coord, nproc, dz, read_endian
+use param, only : z_i, u_star, L_z, nz, coord, nproc, dz, read_endian, MPI_RPREC, comm, ierr
 use grid_m
 logical :: exst
 real(rprec) :: e_int
 integer :: num_t, fid, i
 
 ! Non-dimensionalize
-L = L_z/z_i
+L = z_i/z_i
 Ki_P = Ki_P*z_i/u_star
 Kd_P = Kd_P*u_star/z_i
 
 ! Create nonlinear PID controller
 pid = pid_t(Kp_P, Ki_P, Kd_P, u_set, nonlinear_error)
 ! Create linear PID controller
-pid = pid_t(Kp_P, Ki_P, Kd_P, u_set)
+!pid = pid_t(Kp_P, Ki_P, Kd_P, u_set)
+#ifdef PPMPI
+        if (coord == nproc-1) then
+                inquire (file='pressure_pid.out', exist=exst)
+                        if (exst) then
+                                open(12, file='pressure_pid.out', form='unformatted', convert=read_endian)
+                                read(12) e_int, dp_control, u_control 
+                                close(12) 
+                                pid%e_int = e_int
+                        end if        
+        end if
+#endif        
+! Broadcast dp_control from the last process to all others
+call MPI_Bcast(pid%e_int, 1, MPI_DOUBLE_PRECISION, nproc-1, MPI_COMM_WORLD, ierr)
+call MPI_Bcast(u_control, 1, MPI_DOUBLE_PRECISION, nproc-1, MPI_COMM_WORLD, ierr)
+call MPI_Bcast(dp_control, 1, MPI_DOUBLE_PRECISION, nproc-1, MPI_COMM_WORLD, ierr)
 
-inquire (file='pressure_pid.out', exist=exst)
-if (exst) then
-    open(12, file='pressure_pid.out', form='unformatted', convert=read_endian)
-    read(12) e_int
-    close(12)
-    pid%e_int = e_int
-end if
+! write (*, *) 'PI initial', dp_control, 'e_int', pid%e_int
 end subroutine pressure_grad_init
 
 !*******************************************************************************
 subroutine pressure_grad_finalize
 !*******************************************************************************
-use param, only : read_endian
-
-open(12, file='pressure_grad_pid.out', form='unformatted', convert=read_endian)
-write(12) pid%e_int
-close(12)
-
+use param, only : write_endian, coord, nproc
+#ifdef PPMPI
+        if (coord == nproc-1) then
+                open(12, file='pressure_pid.out', form='unformatted', convert=write_endian)
+                write(12)  pid%e_int, dp_control, u_control
+                close(12)
+        end if
+#endif
 
 end subroutine pressure_grad_finalize
 
@@ -124,7 +140,7 @@ end if
 ! Broadcast dp_control from the last process to all others
 call MPI_Bcast(dp_control, 1, MPI_DOUBLE_PRECISION, nproc-1, MPI_COMM_WORLD, ierr)
 
-! write(*,*) "dp_control:", dp_control, coord
+!write(*,*) "e_int in calc", pid%e_int, dp_control, coord
 ! Pressure gradient: add forcing to RHS
 RHSx(:,:,1:nz-1) = RHSx(:,:,1:nz-1) + dp_control  
   

@@ -87,9 +87,12 @@ real(rprec), public :: filter_cutoff
 logical, public :: adm_correction
 ! Number of timesteps between the output
 integer, public :: tbase
+
+
+! The following are only used in turbines.f90
+! selection of type of dynamic angles
 integer, public :: angle_type
-logical, public :: out_sync
-! Reduction factor based on time filter
+! Reduction factor based on time filter 
 real(rprec), public :: co_red
 
 ! The following are derived from the values above
@@ -104,11 +107,16 @@ real(rprec), dimension(:,:), allocatable :: theta2_arr
 real(rprec), dimension(:), allocatable :: theta2_time
 real(rprec), dimension(:,:), allocatable :: Ct_prime_arr
 real(rprec), dimension(:), allocatable :: Ct_prime_time
+! Reduced theta based on length filter
+real(rprec), dimension(:,:), allocatable :: detadx_red 
+! Reduced angular velocity based on reduced theta
+real(rprec), dimension(:,:), allocatable :: detadx_dt_red
 
 ! Input files
 character(:), allocatable :: input_folder
-character(:), allocatable :: param_dat, theta1_dat, theta2_dat, Ct_prime_dat, motion_dat
-
+character(:), allocatable :: param_dat, theta1_dat, theta2_dat, Ct_prime_dat
+! input file for phase difference of turbine motion if imposed turbine motion is selected
+character(:), allocatable :: motion_dat
 ! Output files
 character(:), allocatable :: output_folder
 character(:), allocatable :: vel_top_dat , u_d_T_dat
@@ -170,6 +178,11 @@ allocate(forcing_fid(nloc))
 ! allocate local rx ry rz
  allocate(rx_l(ld,ny,lbz:nz), ry_l(ld,ny,lbz:nz), rz_l(ld,ny,lbz:nz))
 
+! allocate pitching length reduction
+ allocate(detadx_red(nx, ny)); detadx_red = 0.0_rprec
+! allocate pitching length reduction
+ allocate(detadx_dt_red(nx, ny)); detadx_dt_red = 0.0_rprec
+
 ! Create turbine directory
 call system('mkdir -vp ' // path // output_folder)
 
@@ -177,7 +190,7 @@ call system('mkdir -vp ' // path // output_folder)
 height_all = height_all / z_i
 dia_all = dia_all / z_i
 thk_all = thk_all / z_i
-
+L_platform = L_platform / z_i
 ! Spacing between turbines (as multiple of mean diameter)
 sx = L_x / (num_x * dia_all )
 sy = L_y / (num_y * dia_all )
@@ -204,8 +217,7 @@ k_end = nz
 call read_control_files
 
 
-! Read Asynchronized motion
-
+! Read Asynchronized motion for imposed turbine motion option
 if (out_sync) then 
         call read_FOWT_motion_files 
 end if
@@ -276,7 +288,7 @@ subroutine turbines_nodes
 !
 use functions, only : cross_product, bilinear_interp
 use param, only : dx, dy
-use sim_param, only : detadx, detadx_dt
+use sim_param, only : eta, detadx, detadx_dt
 implicit none
 
 character (*), parameter :: sub_name = mod_name // '.turbines_nodes'
@@ -503,7 +515,9 @@ subroutine turbines_forcing()
 !
 ! This subroutine applies the drag-disk forcing
 !
-use param, only : pi, lbz, total_time, coord, wave_type
+use param, only : jt_total, total_time
+use param, only : pi, lbz, coord, z_i, dx
+use param, only : wave_type, wave_n, wave_freq, amp, L_platform
 use sim_param, only : u, v, w, fxa, fya, fza, detadx, detadx_dt, eta
 use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use functions, only : bilinear_interp
@@ -517,8 +531,10 @@ character(*), parameter :: sub_name2 = 'angle type'
 real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
 real(rprec), pointer :: p_Ct_prime => null()
 integer, pointer :: p_icp => null(), p_jcp => null(), p_kcp => null()
+! pitching motion discripers
 real(rprec), pointer :: p_omegax => null(), p_omegay => null(), p_omegaz => null()
 real(rprec), pointer :: p_theta2_amp => null(), p_theta2_freq => null(), p_phi2 => null()
+! Surging motion discripers
 real(rprec), pointer :: p_x_amp => null(), p_x_freq => null(), p_phase_x => null()
 real(rprec), pointer :: p_x => null(), p_theta2 => null()
 ! real(rprec), pointer :: p_u1 => null()
@@ -536,6 +552,16 @@ real(rprec), pointer, dimension(:) :: y, z,x
 real(rprec), dimension(nloc) :: buffer_array
 real(rprec) :: eta_val
 
+integer :: jx, jy
+real(rprec), dimension(ld, ny) :: x_grid
+do jy = 1,ny
+   do jx= 1,ld
+
+      x_grid(jx,jy) = (jx-1)*dx
+
+   end do
+end do
+
 nullify(x,y,z)
 
 x => grid % x
@@ -544,7 +570,6 @@ z => grid % z
 
 allocate(w_uv(ld,ny,lbz:nz))
 allocate(u_vel_disk(ld,ny,lbz:nz), v_vel_disk(ld,ny,lbz:nz), w_vel_disk(ld,ny,lbz:nz))
-
 
 #ifdef PPMPI
 !syncing intermediate w-velocities
@@ -555,7 +580,8 @@ w_uv = interp_to_uv_grid(w, lbz)
 
 
 ! Here we select which type of angle we want for the turbines. Make sure
-! theta2 is in degrees and the omega's are in radians 
+! theta2 is in degrees and the omega's are in radians. theta2 is negative
+! because above we assume that possitive  angle is measured in clockwise 
 select case(angle_type)
 
         case (0)        ! Offshore angles. Angles coming from the wave
@@ -571,26 +597,48 @@ select case(angle_type)
                 end if
         end if 
 #endif
-!write(*,*) 'size x', size(x)
-!write(*,*) 'size y', size(y)
-!write(*,*) 'detadx', size(detadx(:,:),1)
-!write(*,*) 'detadx2', size(detadx(:,:),2)
+
         do s = 1,nloc
+        ! THe following discripers are for pitching motion
+        ! Here we calc. a prefactor for reduced turbine motion
+        ! For now, only pitch motion is added to reflect reduction
+        ! Calculate prefactor for Lp filtered turbine motion.
+        if (Lp_filter .and. angle_type==0) then
+             detadx_red = 2.0 * amp / L_platform *                              &
+                          sin(0.5 * wave_n * L_platform) *                      &
+                          sin(wave_n*x_grid(1:nx,1:ny) - wave_freq*total_time + &
+                          0.5 * wave_n * L_platform) 
+             detadx_dt_red = - 2.0 * amp * wave_freq / L_platform *             &
+                          sin(0.5 * wave_n * L_platform) *                      &
+                          cos(wave_n*x_grid(1:nx,1:ny) - wave_freq*total_time + &
+                          0.5 * wave_n * L_platform) 
              wind_farm%turbine(s)%theta1 = 0.0_rprec
-             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),detadx(:,:),    &
-                                           wind_farm%turbine(s)%xloc_og,         &
-                                           wind_farm%turbine(s)%yloc_og))*180/pi
+             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),   &
+                                     detadx_red, wind_farm%turbine(s)%xloc_og,  &
+                                     wind_farm%turbine(s)%yloc_og))*180/pi
               wind_farm%turbine(s)%omegax = 0.0_rprec
-              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),detadx_dt(:,:), &
-                                           wind_farm%turbine(s)%xloc_og,         &
-                                           wind_farm%turbine(s)%yloc_og))
+              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),   &
+                                   detadx_dt_red, wind_farm%turbine(s)%xloc_og, &
+                                   wind_farm%turbine(s)%yloc_og))
               wind_farm%turbine(s)%omegaz = 0.0_rprec
-              wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         &  
-                                          wind_farm%turbine(s)%height_og*        &
-                                          sin(wind_farm%turbine(s)%theta2*pi/180)
-              wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-              wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*      &
-                                            cos(wind_farm%turbine(s)%theta2*pi/180)
+        else
+             wind_farm%turbine(s)%theta1 = 0.0_rprec
+             wind_farm%turbine(s)%theta2 = -(bilinear_interp(x(1:nx),y(1:ny),   &
+                                         detadx, wind_farm%turbine(s)%xloc_og,  &
+                                         wind_farm%turbine(s)%yloc_og))*180/pi
+              wind_farm%turbine(s)%omegax = 0.0_rprec
+              wind_farm%turbine(s)%omegay = (bilinear_interp(x(1:nx),y(1:ny),   &
+                                       detadx_dt, wind_farm%turbine(s)%xloc_og, &
+                                       wind_farm%turbine(s)%yloc_og))
+              wind_farm%turbine(s)%omegaz = 0.0_rprec
+        ! THe following discripers are for surging motion
+             ! wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +         &  
+             !                             wind_farm%turbine(s)%height_og*        &
+             !                             sin(wind_farm%turbine(s)%theta2*pi/180)
+             ! wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+             ! wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*      &
+             !                               cos(wind_farm%turbine(s)%theta2*pi/180)
+        end if
         end do
         call turbines_nodes
         
@@ -610,10 +658,13 @@ select case(angle_type)
 
            ! Here we calc. a prefactor for reduced turbine motion
            ! For now, only pitch motion is added to reflect reduction
-
-           co_red = sqrt(1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)/    &
+           ! Calculate prefactor for time filtered turbine motion
+           if (Tp_filter_f .and. angle_type==1) then 
+                co_red = sqrt(1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)/    &
                    (1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)
-
+           else
+                co_red = 1
+           end if
            ! The following motions are based on prefactor co_red
                 wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
                 wind_farm%turbine(s)%theta2 = co_red * p_theta2_amp*sin(p_theta2_freq*2*pi*      &
@@ -639,36 +690,36 @@ select case(angle_type)
 
         else  
               
-                ! Calculate prefactor for time filtered turbine motion
-                co_red = sqrt(1+4*pi*pi*theta2_freq*theta2_freq*filter_t*filter_t)/    &
-                (1+4*pi*pi*theta2_freq*theta2_freq*filter_t*filter_t)
-              
-        
- 
-                do s = 1,nloc
-                        wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
-                        wind_farm%turbine(s)%theta2 = co_red * theta2_amp*sin(theta2_freq*2*pi*      & 
-                                           total_time + phi2)
-                        wind_farm%turbine(s)%omegax = 0.0_rprec
-                        wind_farm%turbine(s)%omegay = co_red * (theta2_freq*2*pi*theta2_amp*          &
-                                           cos(theta2_freq*2*pi*total_time + phi2))*pi/180
-                        wind_farm%turbine(s)%omegaz = 0.0_rprec
-                        wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
-                                         x_amp*sin(x_freq*2*pi*total_time)+        &
-                                         wind_farm%turbine(s)%height_og*           &
-                                         sin(wind_farm%turbine(s)%theta2*pi/180)
-                        wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
-                        if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
-                        !     PRINT *, 'Allocating u for turbine ', s
-                        allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
-                        end if
-                        !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
-                        !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+            ! Calculate prefactor for time filtered turbine motion
+           if (Tp_filter_f .and. angle_type==1) then
+                co_red = sqrt(1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)/    &
+                   (1+4*pi*pi*p_theta2_freq*p_theta2_freq*filter_t*filter_t)
+           else
+                co_red = 1
+           end if          
+           do s = 1,nloc
+                    wind_farm%turbine(s)%theta1 = 0.0_rprec ! Yaw
+                    wind_farm%turbine(s)%theta2 = co_red * theta2_amp*sin(theta2_freq*2*pi*      & 
+                                        total_time + phi2)
+                    wind_farm%turbine(s)%omegax = 0.0_rprec
+                    wind_farm%turbine(s)%omegay = co_red * (theta2_freq*2*pi*theta2_amp*          &
+                                        cos(theta2_freq*2*pi*total_time + phi2))*pi/180
+                    wind_farm%turbine(s)%omegaz = 0.0_rprec
+                    wind_farm%turbine(s)%xloc = wind_farm%turbine(s)%xloc_og +            &  
+                                        x_amp*sin(x_freq*2*pi*total_time)+        &
+                                        wind_farm%turbine(s)%height_og*           &
+                                        sin(wind_farm%turbine(s)%theta2*pi/180)
+                    wind_farm%turbine(s)%yloc = wind_farm%turbine(s)%yloc_og
+                    if (.NOT. ALLOCATED(wind_farm%turbine(s)%u1)) THEN
+                    allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
+                    end if
+                    !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
+                    !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz)
 
-                        wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
-                        wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
-                                           cos(wind_farm%turbine(s)%theta2*pi/180)
-                end do
+                    wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
+                    wind_farm%turbine(s)%height = wind_farm%turbine(s)%height_og*        &
+                                        cos(wind_farm%turbine(s)%theta2*pi/180)
+            end do
         end if
         call turbines_nodes
 
@@ -701,7 +752,7 @@ do s = 1,nloc
         allocate(wind_farm%turbine(s)%u1(ld,ny,lbz:nz))
     end if        
   !  wind_farm%turbine(s)%u2(ld,ny,lbz:nz),                              &
-  !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz))
+  !  wind_farm%turbine(s)%u3(ld,ny,lbz:nz)
     
     wind_farm%turbine(s)%u1(:,:,:) = x_amp*x_freq*sin(x_freq*2*pi*total_time)
 end do
@@ -800,20 +851,18 @@ do s=1,nloc
     p_f_n = -0.5*p_Ct_prime*abs(p_u_d_T)*p_u_d_T*0.25*pi*wind_farm%turbine(s)%dia**2
 
     !write values to file
-    if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
-!        if (angle_type==0) then
-!                eta_val = (bilinear_interp(x(1:nx),y(1:ny),eta(:,:),                    &
-!                                           wind_farm%turbine(s)%xloc_og,    &
-!                                         wind_farm%turbine(s)%yloc_og))
-!        else
-!                eta_val = 0.0 
-!        end if
-        write( forcing_fid(s), *) total_time_dim, wind_farm%turbine(s)%xloc,          & 
-            u_vel_center(s), v_vel_center(s), w_vel_center(s), -p_u_d,                &
-            -p_u_d_T, wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,       &
-            p_Ct_prime, jt_total                   
-!    eta_val
+    if (jt_total .eq. 1 .and. coord == 0) then
+        write(forcing_fid(s), *) &
+                 'total_time_dim, u_vel_center, v_vel_center, w_vel_center,' //   &
+                 ' -p_u_d, -p_u_d_T, Yaw, Pitch, Ct_prim, jt_total'
     end if
+
+    if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
+         write( forcing_fid(s), *) total_time_dim, u_vel_center(s),           &
+                v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,               &
+                wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,         &
+                p_Ct_prime, jt_total
+    end if 
 
 
     do l=1,wind_farm%turbine(s)%num_nodes

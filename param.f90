@@ -188,17 +188,23 @@ real(rprec) :: alpha_spec = 0.0267_rprec
 real(rprec) :: wp_spec = 3.6708_rprec
 real(rprec) :: kp_spec = 1.38_rprec
 real(rprec) :: theta_main = 0.0_rprec
-real(rprec) :: L_platform = 0.0_rprec
 real(rprec) :: amp = 0.0001_rprec 
 real(rprec) :: wave_n = 6.2831_rprec
 real(rprec) :: wave_freq = 120.3100_rprec
+! flag for platform length filter to reduce turbine pitching motion
+logical :: Lp_filter = .false.
+real(rprec) :: L_platform = 90.0_rprec
+! flag for platform time scale filter to reduce turbine pitching motion
+logical :: Tp_filter_f = .false.
+! Filtering time scale to reduce the amplitude of turbine motion
+real(rprec), public :: filter_t = 0.008_rprec
 
+! The followings are for imposed turbine motion option with EQWM b.c.
 ! Dynamic turbine Parameters 
 ! frequency of forced surge
 real(rprec), public :: x_freq = 0.0_rprec 
 ! amplitude of forced surge
 real(rprec), public :: x_amp = 0.0_rprec
-
 ! frequency of forced tilting
 real(rprec), public :: theta2_freq = 0.0_rprec
 ! amplitude of forced tilting
@@ -206,9 +212,8 @@ real(rprec), public :: theta2_amp = 0.0_rprec
 ! second amplitude of forced tilting
 real(rprec), public :: phi2 = 0.0_rprec
 integer, public :: freq_type = 2
-
-! Filtering time scale to reduce the amplitude od turbine motion
-real(rprec), public :: filter_t = 0.008_rprec
+! out_phase flag if on if the imposed turbine motion is not in-phase  
+logical, public :: out_sync
 
 ! Prescribe bottom and top wall streamwise velocity
 ! Only for DNS (sgs=.false.) and full channel (lbc_mom = ubc_mom = 1)

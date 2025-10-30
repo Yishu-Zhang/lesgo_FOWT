@@ -52,7 +52,7 @@ use coriolis
 use inflow, only : inflow_init
 
 use wave_spectrum, only : spectrum_calc
-use pressure_grad, only : pressure_grad_init
+use pressure_grad!, only : pressure_grad_init
 
 #ifdef PPMPI
 use mpi_defs, only : initialize_mpi

@@ -528,7 +528,7 @@ do jz = 1, nz
     arg = (1._rprec/vonk)*log(z/zo_turbines)
 #endif
     if (PI_control_p_force) then
-        mean_p_force_mag = sqrt(dp_control**2)
+        mean_p_force_mag = dp_control
     else 
         mean_p_force_mag = sqrt(mean_p_force_x**2 + mean_p_force_y**2)
     endif
@@ -546,6 +546,9 @@ do jz = 1, nz
         if (use_mean_p_force .and. mean_p_force_mag > 0._rprec) then
             ubar(jz) = arg*mean_p_force_x/mean_p_force_mag
             vbar(jz) = arg*mean_p_force_y/mean_p_force_mag
+        elseif (PI_control_p_force .and. mean_p_force_mag > 0._rprec) then
+            ubar(jz) = arg*mean_p_force_mag
+            vbar(jz) = 0._rprec
         else
             ubar(jz) = arg
             vbar(jz) = 0._rprec

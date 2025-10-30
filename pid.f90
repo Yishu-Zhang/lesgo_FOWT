@@ -30,11 +30,11 @@ public pid_t
 
 type pid_t
     real(rprec) :: e = 0                    ! error (y - y_set)
-    real(rprec) :: e_int = 0                ! integral of error
+    real(rprec) :: e_int = 0               ! integral of error
     real(rprec) :: e_prev = 0               ! previous error
     real(rprec) :: y_set = 0                ! output setoint
     real(rprec) :: Kp = 0, Ki = 0, Kd = 0   ! controller gains
-    logical :: nonlinear_error = .false.   ! Option to calculate error (y - y_set)^2
+    logical :: nonlinear_error    ! Option to calculate error (y - y_set)^2
 contains
     procedure, private :: advance_set, advance_noset
     generic, public :: advance => advance_set, advance_noset

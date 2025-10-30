@@ -81,7 +81,8 @@ call wave_spectrum_read ()
 ! spreading (Same as Yang, et al 2014). The directional spreading has 
 ! the capability to introduce a main wave direction.
 theta_main = theta_main*pi/180_rprec
-K_platform = pi/L_platform   ! This has to be with dimensions
+! K_platform = pi/L_platform   ! This has to be with dimensions
+ K_platform = 1.0_rprec
 
 do jy = 1, ny
    do jx = 1, nx

@@ -470,6 +470,8 @@ do
                 Read (buff(equal_pos+1:), *) kp_spec            
             case ('THETA_MAIN')
                 Read (buff(equal_pos+1:), *) theta_main
+            case ('LP_FILTER')
+                Read (buff(equal_pos+1:), *) Lp_filter 
             case ('L_PLATFORM')
                 Read (buff(equal_pos+1:), *) L_platform
             case ('AMP')
@@ -889,6 +891,8 @@ do
                 read (buff(equal_pos+1:), *) adm_correction
             case ('TBASE')
                 read (buff(equal_pos+1:), *) tbase
+            case ('TP_FILTER_F')
+                read (buff(equal_pos+1:), *) Tp_filter_f    
             case ('FILTER_T')
             read (buff(equal_pos+1:), *) filter_t
             case default
