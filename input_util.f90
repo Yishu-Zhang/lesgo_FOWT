@@ -815,6 +815,8 @@ end subroutine  level_set_block
 subroutine turbines_block()
 !*******************************************************************************
 use turbines
+use CT_prime
+
 implicit none
 
 character(*), parameter :: block_name = 'TURBINES'
@@ -863,6 +865,22 @@ do
                 Read (buff(equal_pos+1:), *) x_freq
             case ('X_AMP')
                 Read (buff(equal_pos+1:), *) x_amp
+            case ('VAR_CT')
+                Read (buff(equal_pos+1:), *) Var_Ct
+            case ('CT_OP')
+                Read (buff(equal_pos+1:), *) CT_op
+            case ('CT_CO')
+                Read (buff(equal_pos+1:), *) CT_co
+            case ('UTR')
+                Read (buff(equal_pos+1:), *) Utr
+            case ('U_CO')
+                Read (buff(equal_pos+1:), *) U_co
+            case ('TSR_OP')
+                Read (buff(equal_pos+1:), *) TSR_op
+            case ('TSR_CO')
+                Read (buff(equal_pos+1:), *) TSR_co
+            case ('ALPHA_CT')
+                Read (buff(equal_pos+1:), *) alpha_Ct
             case ('CT_PRIME')
                 read (buff(equal_pos+1:), *) Ct_prime
             case ('READ_PARAM')

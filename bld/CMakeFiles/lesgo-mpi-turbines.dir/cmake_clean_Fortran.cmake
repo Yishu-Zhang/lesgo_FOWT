@@ -12,6 +12,10 @@ FILE(REMOVE
   "CORIOLIS.mod"
   "CMakeFiles/lesgo-mpi-turbines.dir/coriolis.mod.stamp"
 
+  "ct_prime.mod"
+  "CT_PRIME.mod"
+  "CMakeFiles/lesgo-mpi-turbines.dir/ct_prime.mod.stamp"
+
   "derivatives.mod"
   "DERIVATIVES.mod"
   "CMakeFiles/lesgo-mpi-turbines.dir/derivatives.mod.stamp"

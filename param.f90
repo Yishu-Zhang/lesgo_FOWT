@@ -253,11 +253,8 @@ real(rprec) :: mean_p_force_y = 0.0_rprec
 logical :: PI_control_p_force = .false.
 ! specify how many time steps random force should be used
 ! integer :: pid_time_P = 1000000
-
-
-
-
-
+! if true, a turbine controller will be used to control Ct_prime across regions
+logical :: Var_Ct = .false.
 ! if true, provides random forcing for v & w until certain number of time steps
 logical :: use_random_force = .false.
 ! specify how many time steps random force should be used

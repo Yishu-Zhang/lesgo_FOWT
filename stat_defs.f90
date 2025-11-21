@@ -62,8 +62,16 @@ type turbine_t
     integer :: icp, jcp, kcp
     ! true if the center is in the processor
     logical :: center_in_proc
-    ! thrust coefficient
+    ! local thrust coefficient
     real(rprec) :: Ct_prime
+    ! thrust coefficient
+    real(rprec) :: Ct
+    ! Tip Speed Ratio
+    real(rprec) :: TSR
+    ! Induction factor
+    real(rprec) :: induction
+    ! running free-stream velocity from disk velocity
+    real(rprec) :: Uinf, Uinf_T
     ! running time-average of mean disk velocity
     real(rprec) :: u_d, u_d_T
     ! normal force on turbine disk

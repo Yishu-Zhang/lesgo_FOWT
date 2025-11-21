@@ -123,6 +123,7 @@ write(2,f_fmt) 'inflow_velocity : ', inflow_velocity
 write(2,l_fmt) 'use_mean_p_force : ', use_mean_p_force
 write(2,f_fmt) 'mean_p_force_x : ', mean_p_force_x
 write(2,f_fmt) 'mean_p_force_y : ', mean_p_force_y
+write(2,l_fmt) 'PI_control_p_force : ', PI_control_p_force
 write(2,l_fmt) 'use_random_force : ', use_random_force
 write(2,i_fmt) 'stop_random_force : ', stop_random_force
 write(2,f_fmt) 'rms_random_force : ', rms_random_force
@@ -131,6 +132,7 @@ write(2,f_fmt) 'theta2_freq : ', theta2_freq
 write(2,f_fmt) 'x_amp : ', x_amp
 write(2,f_fmt) 'x_freq : ', x_freq
 write(2,f_fmt) 'filter_t : ', filter_t
+write(2,l_fmt) 'Var_Ct : ', Var_Ct
 write(2,c_fmt) ''
 write(2,c_fmt) '---------------------------------------------------'
 write(2,c_fmt) 'DATA OUTPUT PARAMETERS'

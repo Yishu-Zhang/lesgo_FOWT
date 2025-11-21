@@ -57,10 +57,10 @@ RM = /data/apps/extern/spack_on/gcc/9.3.0/cmake/3.27.7-iygsadyhjln3t7tr73pq56arn
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /scratch4/cmeneve1/Yishu/FINAL_WESC/lesgo_Red
+CMAKE_SOURCE_DIR = /home/yishu/scratch4-cmeneve1/Yishu/VariableCT/lesgo_FOWT
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /scratch4/cmeneve1/Yishu/FINAL_WESC/lesgo_Red/bld
+CMAKE_BINARY_DIR = /home/yishu/scratch4-cmeneve1/Yishu/VariableCT/lesgo_FOWT/bld
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /scratch4/cmeneve1/Yishu/FINAL_WESC/lesgo_Red/bld/CMakeFiles /scratch4/cmeneve1/Yishu/FINAL_WESC/lesgo_Red/bld//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/VariableCT/lesgo_FOWT/bld/CMakeFiles /home/yishu/scratch4-cmeneve1/Yishu/VariableCT/lesgo_FOWT/bld//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /scratch4/cmeneve1/Yishu/FINAL_WESC/lesgo_Red/bld/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/yishu/scratch4-cmeneve1/Yishu/VariableCT/lesgo_FOWT/bld/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -128,6 +128,30 @@ lesgo-mpi-turbines: cmake_check_build_system
 lesgo-mpi-turbines/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lesgo-mpi-turbines.dir/build.make CMakeFiles/lesgo-mpi-turbines.dir/build
 .PHONY : lesgo-mpi-turbines/fast
+
+CT_prime.o: CT_prime.f90.o
+.PHONY : CT_prime.o
+
+# target to build an object file
+CT_prime.f90.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lesgo-mpi-turbines.dir/build.make CMakeFiles/lesgo-mpi-turbines.dir/CT_prime.f90.o
+.PHONY : CT_prime.f90.o
+
+CT_prime.i: CT_prime.f90.i
+.PHONY : CT_prime.i
+
+# target to preprocess a source file
+CT_prime.f90.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lesgo-mpi-turbines.dir/build.make CMakeFiles/lesgo-mpi-turbines.dir/CT_prime.f90.i
+.PHONY : CT_prime.f90.i
+
+CT_prime.s: CT_prime.f90.s
+.PHONY : CT_prime.s
+
+# target to generate assembly for a file
+CT_prime.f90.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lesgo-mpi-turbines.dir/build.make CMakeFiles/lesgo-mpi-turbines.dir/CT_prime.f90.s
+.PHONY : CT_prime.f90.s
 
 cfl_util.o: cfl_util.f90.o
 .PHONY : cfl_util.o
@@ -1458,6 +1482,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... lesgo-mpi-turbines"
+	@echo "... CT_prime.o"
+	@echo "... CT_prime.i"
+	@echo "... CT_prime.s"
 	@echo "... cfl_util.o"
 	@echo "... cfl_util.i"
 	@echo "... cfl_util.s"

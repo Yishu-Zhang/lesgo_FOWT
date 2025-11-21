@@ -94,6 +94,8 @@ integer, public :: tbase
 integer, public :: angle_type
 ! Reduction factor based on time filter 
 real(rprec), public :: co_red
+! if true, a turbine controller will be used to control Ct_prime across regions
+! logical :: Var_Ct = .false.
 
 ! The following are derived from the values above
 integer :: nloc             ! total number of turbines
@@ -273,6 +275,23 @@ if(coord==0) then
         open(newunit=forcing_fid(s), file=string1, status='unknown',           &
             form='formatted', position='append')
     end do
+end if
+
+if (Var_Ct) then
+        if (coord == 0) then
+                do s=1,nloc
+                        inquire (file='turbine_dyn.out', exist=exst)
+                        if (exst) then
+                                open(12, file='turbine_dyn.out', form='unformatted', convert=read_endian)
+                                read(12) wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,   &
+                                      wind_farm%turbine(s)%Uinf, wind_farm%turbine(s)%Uinf_T,        &
+                                      wind_farm%turbine(s)%u_d, wind_farm%turbine(s)%u_d_T,          &
+                                      wind_farm%turbine(s)%induction,  wind_farm%turbine(s)%TSR,     &
+                                      wind_farm%turbine(s)%Ct, wind_farm%turbine(s)%Ct_prime
+                                close(12)
+                        end if
+                end do
+        end if
 end if
 
 nullify(x,y,z)
@@ -523,24 +542,25 @@ use functions, only : linear_interp, interp_to_uv_grid, interp_to_w_grid
 use functions, only : bilinear_interp
 use mpi
 use mosd_wm, only : mono_wave, spectrum_wave
+use CT_prime
+
 implicit none
 
 character(*), parameter :: sub_name = mod_name // '.turbines_forcing'
 character(*), parameter :: sub_name2 = 'angle type'
 
-real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_f_n => null()
-real(rprec), pointer :: p_Ct_prime => null()
+real(rprec), pointer :: p_u_d => null(), p_u_d_T => null(), p_u_inf => null(), p_u_inf_T => null(), p_f_n => null()
+real(rprec), pointer :: p_Ct => null(), p_Ct_prime => null()
+real(rprec), pointer :: p_ind_a => null(), p_TSR => null()
 integer, pointer :: p_icp => null(), p_jcp => null(), p_kcp => null()
 ! pitching motion discripers
 real(rprec), pointer :: p_omegax => null(), p_omegay => null(), p_omegaz => null()
 real(rprec), pointer :: p_theta2_amp => null(), p_theta2_freq => null(), p_phi2 => null()
 ! Surging motion discripers
 real(rprec), pointer :: p_x_amp => null(), p_x_freq => null(), p_phase_x => null()
-real(rprec), pointer :: p_x => null(), p_theta2 => null()
+real(rprec), pointer :: p_x => null(), p_theta2 => null(), p_theta1 => null()
 ! real(rprec), pointer :: p_u1 => null()
-
 integer :: fid
-
 real(rprec) :: ind2
 real(rprec), dimension(nloc) :: disk_avg_vel
 real(rprec), dimension(nloc) :: u_vel_center, v_vel_center, w_vel_center
@@ -551,6 +571,7 @@ real(rprec), allocatable, dimension(:,:,:) :: w_uv
 real(rprec), pointer, dimension(:) :: y, z,x
 real(rprec), dimension(nloc) :: buffer_array
 real(rprec) :: eta_val
+
 
 integer :: jx, jy
 real(rprec), dimension(ld, ny) :: x_grid
@@ -822,28 +843,116 @@ call MPI_Allreduce(u1_center, buffer_array, nloc, MPI_rprec, MPI_SUM, comm, ierr
 u1_center = buffer_array
 #endif
 
+!    if (Var_CT) then
+!        call ctprime_init()
+!        k = 1
+        ! filter eps
+!        if (T_avg_dim > 0.) then
+!            eps = (dt_dim / T_avg_dim) ! / (1. + dt_dim / T_avg_dim)
+!        else
+!            eps = 1.
+!        end if
+
+!        do i = 1,num_x
+!                 do j = 1,num_y
+!                        wind_farm%turbine(k)%induction = &
+!                                compute_induction(-wind_farm%turbine(k)%u_d, wind_farm%turbine(k)%theta2, CT_op, Utr, alpha_Ct)
+!                        wind_farm%turbine(k)%Uinf = &
+!                                U_inf_from_Ud(-wind_farm%turbine(k)%u_d, wind_farm%turbine(k)%induction)
+!                        if (jt_total == 0) then
+!                                wind_farm%turbine(k)%Uinf_T = wind_farm%turbine(k)%Uinf
+!                        else
+!                                wind_farm%turbine(k)%Uinf_T = (1.-eps)*wind_farm%turbine(k)%Uinf_T + eps*wind_farm%turbine(k)%Uinf
+!                        end if
+!                        wind_farm%turbine(k)%TSR = &
+!                                compute_TSR(wind_farm%turbine(k)%Uinf_T, TSR_op, Utr, U_co, P, Q)
+!                        wind_farm%turbine(k)%Ct = &
+!                                compute_CT_from_TSR(wind_farm%turbine(k)%TSR, CT_op, TSR_op, U_co, Utr, P, Q, alpha_Ct)
+!                        wind_farm%turbine(k)%Ct_prime = &
+!                                compute_CT_local_from_CT(wind_farm%turbine(k)%theta2,  wind_farm%turbine(k)%Ct)
+!                        k = k + 1
+!                 end do
+!        end do
+!    else
+!        wind_farm%turbine(:)%Ct_prime = Ct_prime
+!    end if
+
+
+
 ! Update epsilon for the new timestep (for cfl_dt)
 if (T_avg_dim > 0.) then
-    eps = (dt_dim / T_avg_dim) / (1. + dt_dim / T_avg_dim)
+    eps = (dt_dim / T_avg_dim) ! / (1. + dt_dim / T_avg_dim)
 else
     eps = 1.
 end if
+
 
 ! Calculate and apply disk force
 do s=1,nloc
     !set pointers
     p_u_d => wind_farm%turbine(s)%u_d
     p_u_d_T => wind_farm%turbine(s)%u_d_T
+    p_u_inf => wind_farm%turbine(s)%Uinf
+    p_u_inf_T => wind_farm%turbine(s)%Uinf_T
+    p_ind_a => wind_farm%turbine(s)%induction
+    p_TSR => wind_farm%turbine(s)%TSR
+    p_theta1 => wind_farm%turbine(s)%theta1
+    p_theta2 => wind_farm%turbine(s)%theta2
     p_f_n => wind_farm%turbine(s)%f_n
+    p_Ct => wind_farm%turbine(s)%Ct
     p_Ct_prime => wind_farm%turbine(s)%Ct_prime
-
     !add this current value to the "running average" (first order filter)
     p_u_d = disk_avg_vel(s)
     if (adm_correction) then
         p_u_d = p_u_d /(1 + 0.25_rprec                                         &
             * (1-wind_farm%turbine(s)%turb_ind_func%M)*p_Ct_prime)
     end if
-    p_u_d_T = (1.-eps)*p_u_d_T + eps*p_u_d
+
+    ! --- Initialize running average for first timestep ---
+    if (jt_total == 1) then
+        p_u_d_T   = p_u_d
+!    print*,'u_d valuie =',p_u_d, 'set filter u_d valuie =',p_u_d_T
+    else
+        p_u_d_T   = (1.0_rprec - eps)*p_u_d_T + eps*p_u_d
+    end if
+!    print*,'Turbine Num.', s, 'filtered disk velocity', p_u_d_T
+
+    ! --- Compute induction and Uinf safely ---       
+    if (Var_CT) then
+        call ctprime_init()
+        ! k = 1
+        ! filter eps
+        ! if (T_avg_dim > 0.) then
+        !    eps = (dt_dim / T_avg_dim) ! / (1. + dt_dim / T_avg_dim)
+        ! else
+        !    eps = 1.
+        ! end if
+        p_ind_a = compute_induction(-p_u_d, p_theta2, CT_op, Utr, alpha_Ct)
+!        print*,'Turbine Num.', s, 'induction', p_ind_a
+        p_u_inf = U_inf_from_Ud(-p_u_d, p_ind_a)
+!        print*,'Turbine Num.', s, 'free-stream U', p_u_inf
+                       ! if (jt_total == 0) then
+                       !         wind_farm%turbine(k)%Uinf_T = wind_farm%turbine(k)%Uinf
+                       ! else
+         ! Initialize running average of Uinf
+        if (jt_total == 1) then
+            p_u_inf_T = p_u_inf
+!            print*,'u_inf value =',p_u_inf, 'set filter u_inf valuie =',p_u_inf_T
+        else
+            p_u_inf_T = (1.0_rprec - eps)*p_u_inf_T + eps*p_u_inf
+        end if
+!        print*,'Turbine Num.', s, 'filtered free-stream U', p_u_inf_T
+        p_TSR = compute_TSR(p_u_inf_T, TSR_op, Utr, U_co, P, Q)
+!        print*,'Turbine Num.', s, 'TSR', p_TSR
+        p_Ct = compute_CT_from_TSR(p_TSR, CT_op, TSR_op, U_co, Utr, P, Q, alpha_Ct)
+!        print*,'Turbine Num.', s, 'CT', p_Ct
+        p_Ct_prime = compute_CT_local_from_CT(p_theta2,  p_Ct)
+!        print*,'Turbine Num.', s, 'CT', p_Ct_prime
+
+    end if
+
+
+
 
     !calculate total thrust force for each turbine  (per unit mass)
     !force is normal to the surface (calc from u_d_T, normal to surface)
@@ -854,14 +963,15 @@ do s=1,nloc
     if (jt_total .eq. 1 .and. coord == 0) then
         write(forcing_fid(s), *) &
                  'total_time_dim, u_vel_center, v_vel_center, w_vel_center,' //   &
-                 ' -p_u_d, -p_u_d_T, Yaw, Pitch, Ct_prim, jt_total'
+                 ' -p_u_d, -p_u_d_T, Uinf, Uinf_T, Yaw, Pitch, ind_a, TSR, Ct,    &
+                 Ct_prim, jt_total'
     end if
 
     if (modulo (jt_total, tbase) == 0 .and. coord == 0) then
          write( forcing_fid(s), *) total_time_dim, u_vel_center(s),           &
-                v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,               &
-                wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,         &
-                p_Ct_prime, jt_total
+                v_vel_center(s), w_vel_center(s), -p_u_d, -p_u_d_T,           &
+                p_u_inf, p_u_inf_T, p_theta1, p_theta2, p_ind_a, p_TSR,           &
+               p_Ct, p_Ct_prime, jt_total                                              
     end if 
 
 
@@ -946,6 +1056,20 @@ if (coord == 0) then
     close (fid)
 end if
 
+if (Var_Ct) then 
+    if (coord == 0) then
+        do s = 1, nloc
+                open(12, file='turbine_dyn.out', form='unformatted', convert=write_endian)
+                write(12) wind_farm%turbine(s)%theta1, wind_farm%turbine(s)%theta2,  &
+                      wind_farm%turbine(s)%Uinf, wind_farm%turbine(s)%Uinf_T,        &
+                      wind_farm%turbine(s)%u_d, wind_farm%turbine(s)%u_d_T,          &
+                      wind_farm%turbine(s)%induction, wind_farm%turbine(s)%TSR,      &
+                      wind_farm%turbine(s)%Ct, wind_farm%turbine(s)%Ct_prime
+                close(12)
+        end do
+    end if
+end if
+
 end subroutine turbines_checkpoint
 
 !*******************************************************************************
@@ -999,6 +1123,7 @@ subroutine place_turbines
 !
 use param, only: pi, z_i
 use messages
+use CT_prime
 implicit none
 
 character(*), parameter :: sub_name = mod_name // '.place_turbines'
@@ -1066,8 +1191,9 @@ else
     wind_farm%turbine(:)%thk = thk_all
     wind_farm%turbine(:)%theta1 = theta1_all
     wind_farm%turbine(:)%theta2 = theta2_all
-    wind_farm%turbine(:)%Ct_prime = Ct_prime
-
+    if (.not. Var_Ct) then
+           wind_farm%turbine(:)%Ct_prime = Ct_prime 
+    end if
     ! Set baseline locations (evenly spaced, not staggered aka aligned)
     k = 1
     sxx = sx * dia_all  ! x-spacing with units to match those of L_x
@@ -1244,7 +1370,6 @@ logical :: exst
 
 
 
-! Read motion parameters from file if needed
 ! Check if file exists and open
     inquire (file = motion_dat, exist = exst)
     if (.not. exst) then
